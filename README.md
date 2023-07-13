@@ -17,7 +17,7 @@ Write={Creds:[{User:mark
  Meta:
 }]}
 
-./passdb search gitlab
+./passdb get gitlab
 Read=./creds.d/9d96d9d5b1addd7e7e6119a23b1e5b5f68545312bfecb21d1cdc6af22b8628b8.json.enc
 &{[{mark
  1234
