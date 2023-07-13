@@ -90,7 +90,7 @@ func parseFile(bytePassword []byte, fname string, out interface{}) error {
 }
 
 func writeFile(nonce []byte, privKey []byte, path string, f interface{}) error {
-	fd, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
+	fd, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if e != nil {
 		return e
 	}
@@ -116,10 +116,10 @@ func writeFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 	}
 	defer func() {
 		if e := sw.Close(); e != nil {
-			fmt.Printf("writeFile.Close2 e=%s\n", e.Error())
+			fmt.Printf("writeFile.StreamClose e=%s\n", e.Error())
 		}
 		if e := w.Flush(); e != nil {
-                        fmt.Printf("writeFile.Flush e=%s\n", e.Error())
+			fmt.Printf("writeFile.Flush e=%s\n", e.Error())
 		}
 	}()
 
@@ -145,34 +145,43 @@ func add(name string, bytePassword []byte, cred Cred, overwrite bool) {
 		hname = fmt.Sprintf("%x", h.Sum(nil))
 	}
 
-	fname := fmt.Sprintf("%s/%s.json.enc", DBPath, hname)
-	c := File{}
+	{
+		fname := fmt.Sprintf("%s/%s.json.enc", DBPath, hname)
+		c := File{}
 
-	if _, e := os.Stat(fname); e == nil {
-		if e := parseFile(bytePassword, fname, &c); e != nil {
+		if _, e := os.Stat(fname); e == nil {
+			if e := parseFile(bytePassword, fname, &c); e != nil {
+				panic(e)
+			}
+		} else if !errors.Is(e, os.ErrNotExist) {
+			// Only panic when error something else than nonexists
 			panic(e)
 		}
-	} else if !errors.Is(e, os.ErrNotExist) {
-		// Only panic when error something else than nonexists
-		panic(e)
-	}
 
-	if overwrite {
-		c.Creds = []Cred{cred}
-	} else {
+		var delCreds []Cred
+		if overwrite {
+			for _, oldCred := range c.Creds {
+				delCreds = append(delCreds, oldCred)
+			}
+			c = File{}
+		}
 		c.Creds = append(c.Creds, cred)
-	}
-	if Verbose {
-		fmt.Printf("Write=%+v to %s\n", c, fname)
-	}
 
-	nonce := randSeq(8)
-	privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
-	if e != nil {
-		panic(e)
-	}
-	if e := writeFile(nonce, privKey, fname, &c); e != nil {
-		panic(e)
+		if Verbose {
+			fmt.Printf("Write=%v to %s\n", c, fname)
+		}
+
+		nonce := randSeq(8)
+		privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
+		if e != nil {
+			panic(e)
+		}
+		if e := writeFile(nonce, privKey, fname, &c); e != nil {
+			panic(e)
+		}
+		for _, oldCred := range delCreds {
+			fmt.Printf("Deleted %v\n", oldCred)
+		}
 	}
 
 	// Now also update Lookup
