@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/mpdroog/passdb/stream"
@@ -11,6 +12,7 @@ import (
 	"golang.org/x/term"
 	"math/rand"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -27,7 +29,10 @@ type Cred struct {
 
 var (
 	Verbose bool
-	letters = []byte("abcdefghijklmnopqrstuvwxyz")
+	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
+
+	// Lookup-table for all files in creds.d dir
+	Lookup map[string]string
 )
 
 func randSeq(n int) []byte {
@@ -43,10 +48,10 @@ func scryptKey(bytePassword []byte, nonce [8]byte) ([]byte, error) {
 	return scrypt.Key(bytePassword, nonce[:], 1<<15, 8, 1, 32)
 }
 
-func parseFile(bytePassword []byte, fname string) (*File, error) {
+func parseFile(bytePassword []byte, fname string, out interface{}) error {
 	fd, e := os.Open(fname)
 	if e != nil {
-		return nil, e
+		return e
 	}
 	defer func() {
 		if e := fd.Close(); e != nil {
@@ -58,27 +63,26 @@ func parseFile(bytePassword []byte, fname string) (*File, error) {
 	nonce := make([]byte, 8)
 	n, e := fd.Read(nonce)
 	if e != nil {
-		return nil, e
+		return e
 	}
 	if n != 8 {
-		return nil, fmt.Errorf("Reading nonce failed")
+		return fmt.Errorf("Reading nonce failed")
 	}
 
 	privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
 	r, e := stream.NewReader(privKey, fd)
 	if e != nil {
-		return nil, e
+		return e
 	}
 
-	f := new(File)
-	if e := json.NewDecoder(r).Decode(f); e != nil {
-		return nil, e
+	if e := json.NewDecoder(r).Decode(out); e != nil {
+		return e
 	}
 
-	return f, nil
+	return nil
 }
 
-func writeFile(nonce []byte, privKey []byte, path string, f *File) error {
+func writeFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 	fd, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
 	if e != nil {
 		return e
@@ -116,7 +120,9 @@ func writeFile(nonce []byte, privKey []byte, path string, f *File) error {
 func getStdin(question string) (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print(question + ": ")
-	return reader.ReadString('\n')
+	s, e := reader.ReadString('\n')
+	s = strings.TrimSpace(s)
+	return s, e
 }
 
 func main() {
@@ -130,6 +136,7 @@ func main() {
 		fmt.Printf("Example usage:\n")
 		fmt.Printf("\t%s get github\n", os.Args[0])
 		fmt.Printf("\t%s add gitlab\n", os.Args[0])
+		fmt.Printf("\t%s export gitlab\n", os.Args[0])
 		os.Exit(1)
 		return
 	}
@@ -150,11 +157,32 @@ func main() {
 		}
 	}
 
+	// Lookup-tbl
+	{
+		fname := fmt.Sprintf("%s/lookup.json.enc", dbPath)
+		haveFile := true
+		if _, e := os.Stat(fname); errors.Is(e, os.ErrNotExist) {
+			Lookup = make(map[string]string)
+			haveFile = false
+		}
+		if e != nil {
+			panic(e)
+		}
+
+		if haveFile {
+			if e := parseFile(bytePassword, fname, &Lookup); e != nil {
+				panic(e)
+			}
+		}
+	}
+
 	var fname string
+	var hash string
 	{
 		h := sha256.New()
 		h.Write([]byte(os.Args[2]))
-		fname = fmt.Sprintf("%s/%x.json.enc", dbPath, h.Sum(nil))
+		hash = fmt.Sprintf("%x", h.Sum(nil))
+		fname = fmt.Sprintf("%s/%s.json.enc", dbPath, hash)
 	}
 
 	if os.Args[1] == "add" {
@@ -173,10 +201,19 @@ func main() {
 			panic(e)
 		}
 
-		c.Creds = []Cred{
-			Cred{User: user, Pass: pass, Meta: meta},
+		if _, err := os.Stat(fname); err == nil {
+			if e := parseFile(bytePassword, fname, &c); e != nil {
+				panic(e)
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			// Only panic when error something else than nonexists
+			panic(e)
 		}
-		fmt.Printf("Write=%+v\n", c)
+
+		c.Creds = append(c.Creds, Cred{User: user, Pass: pass, Meta: meta})
+		if Verbose {
+			fmt.Printf("Write=%+v\n", c)
+		}
 
 		nonce := randSeq(8)
 		privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
@@ -186,16 +223,59 @@ func main() {
 		if e := writeFile(nonce, privKey, fname, &c); e != nil {
 			panic(e)
 		}
-	} else if os.Args[1] == "search" {
-		// Scan in all files?
+
+		// Now also update Lookup
+		{
+			nonce := randSeq(8)
+			privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
+			if e != nil {
+				panic(e)
+			}
+			Lookup[os.Args[2]] = hash
+			if e := writeFile(nonce, privKey, dbPath+"/lookup.json.enc", Lookup); e != nil {
+				panic(e)
+			}
+		}
+
+	} else if os.Args[1] == "export" {
+		if Verbose {
+			fmt.Printf("lookup=%+v\n", Lookup)
+		}
+		for name, fname := range Lookup {
+			fullFname := fmt.Sprintf("%s/%s.json.enc", dbPath, fname)
+			if Verbose {
+				fmt.Printf("Read=%s (%s)\n", name, fullFname)
+			}
+			var creds = File{}
+			if e := parseFile(bytePassword, fullFname, &creds); e != nil {
+				panic(e)
+			}
+			for id, cred := range creds.Creds {
+				fmt.Printf("User=%s\n", cred.User)
+				fmt.Printf("Pass=%s\n", cred.Pass)
+				fmt.Printf("Meta=%s\n", cred.Meta)
+				if id+1 != len(creds.Creds) {
+					fmt.Printf("\n")
+				}
+			}
+		}
 
 	} else if os.Args[1] == "get" {
-		fmt.Printf("Read=%s\n", fname)
-		creds, e := parseFile(bytePassword, fname)
-		if e != nil {
+		if Verbose {
+			fmt.Printf("Read=%s\n", fname)
+		}
+		var creds = File{}
+		if e := parseFile(bytePassword, fname, &creds); e != nil {
 			panic(e)
 		}
-		fmt.Printf("%+s\n", creds)
+		for id, cred := range creds.Creds {
+			fmt.Printf("User=%s\n", cred.User)
+			fmt.Printf("Pass=%s\n", cred.Pass)
+			fmt.Printf("Meta=%s\n", cred.Meta)
+			if id+1 != len(creds.Creds) {
+				fmt.Printf("\n")
+			}
+		}
 
 	} else {
 		fmt.Printf("Invalid args\n")

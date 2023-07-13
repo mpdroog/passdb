@@ -24,3 +24,27 @@ Read=./creds.d/9d96d9d5b1addd7e7e6119a23b1e5b5f68545312bfecb21d1cdc6af22b8628b8.
 
 }]}
 ```
+
+creds.d structure
+==================
+Store all credentials and lookup-table into one directory. This way
+you can easilly send all your passwords everywhere you want with i.e. Git
+
+```
+creds.d
+- lookup.json.enc contains map[file] = sha256(file)
+- sha256file.json.enc contains chacha20poly1305(File) 
+```
+
+sha256file.json.enc
+```go
+type File struct {
+	Creds []Cred
+}
+
+type Cred struct {
+	User string
+	Pass string
+	Meta string
+}
+```
