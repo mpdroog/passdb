@@ -243,17 +243,15 @@ func main() {
 		}
 		for name, fname := range Lookup {
 			fullFname := fmt.Sprintf("%s/%s.json.enc", dbPath, fname)
-			if Verbose {
-				fmt.Printf("Read=%s (%s)\n", name, fullFname)
-			}
+			fmt.Printf("%s\n=======================\n", name)
 			var creds = File{}
 			if e := parseFile(bytePassword, fullFname, &creds); e != nil {
 				panic(e)
 			}
 			for id, cred := range creds.Creds {
-				fmt.Printf("User=%s\n", cred.User)
-				fmt.Printf("Pass=%s\n", cred.Pass)
-				fmt.Printf("Meta=%s\n", cred.Meta)
+				fmt.Printf("user=%s\n", cred.User)
+				fmt.Printf("pass=%s\n", cred.Pass)
+				fmt.Printf("meta=%s\n", cred.Meta)
 				if id+1 != len(creds.Creds) {
 					fmt.Printf("\n")
 				}
@@ -269,9 +267,9 @@ func main() {
 			panic(e)
 		}
 		for id, cred := range creds.Creds {
-			fmt.Printf("User=%s\n", cred.User)
-			fmt.Printf("Pass=%s\n", cred.Pass)
-			fmt.Printf("Meta=%s\n", cred.Meta)
+			fmt.Printf("user=%s\n", cred.User)
+			fmt.Printf("pass=%s\n", cred.Pass)
+			fmt.Printf("meta=%s\n", cred.Meta)
 			if id+1 != len(creds.Creds) {
 				fmt.Printf("\n")
 			}

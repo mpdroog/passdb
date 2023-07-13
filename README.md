@@ -8,21 +8,38 @@ Why create this?
 - Wanted something simple so I can easily share it between all of my machines;
 
 ```bash
-./passdb add gitlab
-user: mark
-pass: 1234
-meta:
-Write={Creds:[{User:mark
- Pass:1234
- Meta:
-}]}
+# Add new entry to DB with file github
+./passdb add github
+user: fourth
+pass: four
+meta: four
 
-./passdb get gitlab
-Read=./creds.d/9d96d9d5b1addd7e7e6119a23b1e5b5f68545312bfecb21d1cdc6af22b8628b8.json.enc
-&{[{mark
- 1234
+./passdb add github
+user: one
+pass: one
+meta: one
 
-}]}
+# Get all entries for given file
+./passdb get github
+user=fourth
+pass=four
+meta=four
+
+user=one
+pass=one
+meta=one
+
+# Get all entries
+./passdb export all
+github
+=======================
+user=fourth
+pass=four
+meta=four
+
+user=one
+pass=one
+meta=one
 ```
 
 creds.d structure
@@ -32,8 +49,13 @@ you can easilly send all your passwords everywhere you want with i.e. Git
 
 ```
 creds.d
-- lookup.json.enc contains map[file] = sha256(file)
+- lookup.json.enc contains chacha20poly1305(Lookup)
 - sha256file.json.enc contains chacha20poly1305(File) 
+```
+
+lookup.json.enc
+```go
+Lookup map[string]string = map[fileName] = sha256(fileName)
 ```
 
 sha256file.json.enc
@@ -48,3 +70,4 @@ type Cred struct {
 	Meta string
 }
 ```
+
