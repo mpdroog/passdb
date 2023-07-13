@@ -118,6 +118,9 @@ func writeFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 		if e := sw.Close(); e != nil {
 			fmt.Printf("writeFile.Close2 e=%s\n", e.Error())
 		}
+		if e := w.Flush(); e != nil {
+                        fmt.Printf("writeFile.Flush e=%s\n", e.Error())
+		}
 	}()
 
 	if e := json.NewEncoder(sw).Encode(f); e != nil {
@@ -134,7 +137,7 @@ func getStdin(question string) (string, error) {
 	return s, e
 }
 
-func add(name string, bytePassword []byte, cred Cred) {
+func add(name string, bytePassword []byte, cred Cred, overwrite bool) {
 	var hname string
 	{
 		h := sha256.New()
@@ -154,9 +157,13 @@ func add(name string, bytePassword []byte, cred Cred) {
 		panic(e)
 	}
 
-	c.Creds = append(c.Creds, cred)
+	if overwrite {
+		c.Creds = []Cred{cred}
+	} else {
+		c.Creds = append(c.Creds, cred)
+	}
 	if Verbose {
-		fmt.Printf("Write=%+v\n", c)
+		fmt.Printf("Write=%+v to %s\n", c, fname)
 	}
 
 	nonce := randSeq(8)
@@ -191,6 +198,7 @@ Usage:
   passdb find <name> [--verbose] [--dir=<dir>]
   passdb get <name> [--verbose] [--dir=<dir>]
   passdb add <name> [--verbose] [--dir=<dir>]
+  passdb set <name> [--verbose] [--dir=<dir>]
   passdb import <file> [--verbose] [--dir=<dir>]
   passdb export [--verbose] [--dir=<dir>]
   passdb -h | --help
@@ -218,7 +226,7 @@ Options:
 
 	cmd := ""
 	// TODO: Kind of duplicate
-	for _, k := range []string{"find", "get", "add", "import", "export"} {
+	for _, k := range []string{"find", "get", "add", "set", "import", "export"} {
 		if ok, _ := args.Bool(k); ok {
 			cmd = k
 			break
@@ -260,7 +268,7 @@ Options:
 		}
 	}
 
-	if cmd == "add" {
+	if cmd == "add" || cmd == "set" {
 		user, e := getStdin("user")
 		if e != nil {
 			panic(e)
@@ -274,7 +282,11 @@ Options:
 			panic(e)
 		}
 
-		add(fname, bytePassword, Cred{User: user, Pass: pass, Meta: meta})
+		overwrite := false
+		if cmd == "set" {
+			overwrite = true
+		}
+		add(fname, bytePassword, Cred{User: user, Pass: pass, Meta: meta}, overwrite)
 
 	} else if cmd == "import" {
 		// Login = "xyz","cointracker.io","Login","cointracker.io","mail@domain.com",
@@ -312,7 +324,7 @@ Options:
 			if Verbose {
 				fmt.Printf("C(key=%s)=%+v\n", key, c)
 			}
-			add(key, bytePassword, c)
+			add(key, bytePassword, c, false)
 		}
 
 		if e := scanner.Err(); e != nil {
@@ -347,6 +359,9 @@ Options:
 				// Keyname does not match
 				continue
 			}
+			if Verbose {
+				fmt.Printf("Match %s => %s\n", name, filename)
+			}
 			var creds = File{}
 			fullFname := fmt.Sprintf("%s/%s.json.enc", DBPath, filename)
 			if e := parseFile(bytePassword, fullFname, &creds); e != nil {
@@ -365,7 +380,6 @@ Options:
 		}
 
 	} else if cmd == "get" {
-		var fname string
 		var hash string
 		{
 			h := sha256.New()
