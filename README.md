@@ -5,7 +5,7 @@ Small Go CLI-tool that asks for your master password and then decodes a small te
 
 Why create this?
 - Got tired of vendor lock-ins and cloud B/S;
-- Wanted something simple so I can easily share it between all of my machines;
+- Wanted something simple so I can easily share it between all of my machines with a Git-repo;
 
 ```bash
 # Add new entry to DB with file github
