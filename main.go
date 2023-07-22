@@ -30,6 +30,7 @@ Usage:
   passdb get <name> [--verbose] [--dir=<dir>]
   passdb add <name> [--verbose] [--dir=<dir>]
   passdb set <name> [--verbose] [--dir=<dir>]
+  passdb generate <name> [--verbose] [--dir=<dir>]
   passdb import <file> [--verbose] [--dir=<dir>]
   passdb export [--verbose] [--dir=<dir>]
   passdb -h | --help
@@ -57,7 +58,7 @@ Options:
 
 	cmd := ""
 	// TODO: Kind of duplicate
-	for _, k := range []string{"find", "get", "add", "set", "import", "export"} {
+	for _, k := range []string{"find", "get", "add", "set", "import", "export", "generate"} {
 		if ok, _ := args.Bool(k); ok {
 			cmd = k
 			break
@@ -74,6 +75,7 @@ Options:
 	if e != nil {
 		panic(e)
 	}
+	fmt.Println() // newline after passfield
 
 	// Lookup-tbl
 	{
@@ -99,6 +101,7 @@ Options:
 		if e != nil {
 			panic(e)
 		}
+		// TODO: Hide pass from shell?
 		pass, e := getStdin("pass")
 		if e != nil {
 			panic(e)
@@ -232,6 +235,48 @@ Options:
 				fmt.Printf("\n")
 			}
 		}
+	} else if cmd == "generate" {
+		var pass []byte
+		for {
+			// Random pass
+			pass = randSeq(12)
+			fmt.Printf("pass=%s\n", pass)
+			ok := ""
+			ok, e := getStdin("confirm to save (y)")
+			if e != nil {
+				panic(e)
+			}
+			if ok == "y" {
+				break
+			}
+		}
+
+		user, e := getStdin("user")
+		if e != nil {
+			panic(e)
+		}
+		meta, e := getStdin("meta")
+		if e != nil {
+			panic(e)
+		}
+
+		var hash string
+		{
+			h := sha256.New()
+			h.Write([]byte(fname))
+			hash = fmt.Sprintf("%x", h.Sum(nil))
+			fname = fmt.Sprintf("%s/%s.json.enc", DBPath, hash)
+		}
+
+		fmt.Printf("user=%s\n", user)
+		fmt.Printf("pass=%s\n", pass)
+		fmt.Printf("meta=%s\n", meta)
+
+		if _, e := getStdin("confirm to save"); e != nil {
+			panic(e)
+		}
+
+		add(fname, bytePassword, Cred{User: user, Pass: string(pass), Meta: meta}, false)
 
 	} else {
 		fmt.Printf("No such cmd=%s\n", cmd)
