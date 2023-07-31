@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/sha256"
 	"encoding/csv"
 	"errors"
@@ -134,8 +133,6 @@ Options:
 		// TODO: Cache file through bufferreader?
 		r := csv.NewReader(fd)
 
-		scanner := bufio.NewScanner(fd)
-		// optionally, resize scanner's capacity for lines over 64K, see next example
 		for {
 			toks, e := r.Read()
 			if e == io.EOF {
@@ -154,10 +151,6 @@ Options:
 				fmt.Printf("C(key=%s)=%+v\n", key, c)
 			}
 			add(key, bytePassword, c, false)
-		}
-
-		if e := scanner.Err(); e != nil {
-			panic(e)
 		}
 
 	} else if cmd == "export" {

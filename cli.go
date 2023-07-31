@@ -20,6 +20,6 @@ func getStdin(question string) (string, error) {
 
 // getPass asks for a password (same as getStdin except we don't show what user enters in CLI)
 func getPass() ([]byte, error) {
-	fmt.Print("Pass: ")
+	fmt.Print("Master Pass: ")
 	return term.ReadPassword(int(syscall.Stdin))
 }
