@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"bufio"
@@ -33,7 +33,7 @@ func init() {
 }
 
 // randSeq creates a byte array of N-items
-func randSeq(n int) []byte {
+func RandSeq(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
@@ -42,13 +42,13 @@ func randSeq(n int) []byte {
 }
 
 // scryptKey generates a password with random nonce for better security of file
-func scryptKey(bytePassword []byte, nonce [8]byte) ([]byte, error) {
+func ScryptKey(bytePassword []byte, nonce [8]byte) ([]byte, error) {
 	// devnote: using [8]byte to enforce fixed length
 	return scrypt.Key(bytePassword, nonce[:], 1<<15, 8, 1, 32)
 }
 
 // parseFile reads the creds-dir with given pass
-func parseFile(bytePassword []byte, fname string, out interface{}) error {
+func ParseFile(bytePassword []byte, fname string, out interface{}) error {
 	fd, e := os.Open(fname)
 	if e != nil {
 		return e
@@ -71,7 +71,7 @@ func parseFile(bytePassword []byte, fname string, out interface{}) error {
 		return fmt.Errorf("Reading nonce failed")
 	}
 
-	privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
+	privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
 	rs, e := stream.NewReader(privKey, r)
 	if e != nil {
 		return e
@@ -85,7 +85,7 @@ func parseFile(bytePassword []byte, fname string, out interface{}) error {
 }
 
 // writeFile stores encrypted(json(f-var)) in given path
-func writeFile(nonce []byte, privKey []byte, path string, f interface{}) error {
+func WriteFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 	fd, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if e != nil {
 		return e
@@ -126,7 +126,7 @@ func writeFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 }
 
 // add wraps the writeFile-func by offering an overwrite-option
-func add(name string, bytePassword []byte, cred Cred, overwrite bool) {
+func Add(name string, bytePassword []byte, cred Cred, overwrite bool) {
 	var hname string
 	{
 		h := sha256.New()
@@ -139,7 +139,7 @@ func add(name string, bytePassword []byte, cred Cred, overwrite bool) {
 		c := File{}
 
 		if _, e := os.Stat(fname); e == nil {
-			if e := parseFile(bytePassword, fname, &c); e != nil {
+			if e := ParseFile(bytePassword, fname, &c); e != nil {
 				panic(e)
 			}
 		} else if !errors.Is(e, os.ErrNotExist) {
@@ -160,12 +160,12 @@ func add(name string, bytePassword []byte, cred Cred, overwrite bool) {
 			fmt.Printf("Write=%v to %s\n", c, fname)
 		}
 
-		nonce := randSeq(8)
-		privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
+		nonce := RandSeq(8)
+		privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
 		if e != nil {
 			panic(e)
 		}
-		if e := writeFile(nonce, privKey, fname, &c); e != nil {
+		if e := WriteFile(nonce, privKey, fname, &c); e != nil {
 			panic(e)
 		}
 		for _, oldCred := range delCreds {
@@ -175,13 +175,13 @@ func add(name string, bytePassword []byte, cred Cred, overwrite bool) {
 
 	// Now also update Lookup
 	{
-		nonce := randSeq(8)
-		privKey, e := scryptKey(bytePassword, ([8]byte)(nonce))
+		nonce := RandSeq(8)
+		privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
 		if e != nil {
 			panic(e)
 		}
 		Lookup[name] = hname
-		if e := writeFile(nonce, privKey, DBPath+"/lookup.json.enc", Lookup); e != nil {
+		if e := WriteFile(nonce, privKey, DBPath+"/lookup.json.enc", Lookup); e != nil {
 			panic(e)
 		}
 	}

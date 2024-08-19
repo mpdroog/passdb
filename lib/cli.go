@@ -1,4 +1,4 @@
-package main
+package lib
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 )
 
 // getStdin asks question and returns the user reply
-func getStdin(question string) (string, error) {
+func GetStdin(question string) (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print(question + ": ")
 	s, e := reader.ReadString('\n')
@@ -19,7 +19,7 @@ func getStdin(question string) (string, error) {
 }
 
 // getPass asks for a password (same as getStdin except we don't show what user enters in CLI)
-func getPass() ([]byte, error) {
+func GetPass() ([]byte, error) {
 	fmt.Print("Master Pass: ")
 	return term.ReadPassword(int(syscall.Stdin))
 }

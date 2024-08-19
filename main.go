@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/docopt/docopt-go"
+	"github.com/mpdroog/passdb/lib"
 	"io"
 	"os"
 	"strings"
@@ -70,7 +71,7 @@ Options:
 	}
 	fname = strings.ToLower(fname)
 
-	bytePassword, e := getPass()
+	bytePassword, e := lib.GetPass()
 	if e != nil {
 		panic(e)
 	}
@@ -89,23 +90,23 @@ Options:
 		}
 
 		if haveFile {
-			if e := parseFile(bytePassword, fname, &Lookup); e != nil {
+			if e := lib.ParseFile(bytePassword, fname, &lib.Lookup); e != nil {
 				panic(e)
 			}
 		}
 	}
 
 	if cmd == "add" || cmd == "set" {
-		user, e := getStdin("user")
+		user, e := lib.GetStdin("user")
 		if e != nil {
 			panic(e)
 		}
 		// TODO: Hide pass from shell?
-		pass, e := getStdin("pass")
+		pass, e := lib.GetStdin("pass")
 		if e != nil {
 			panic(e)
 		}
-		meta, e := getStdin("meta")
+		meta, e := lib.GetStdin("meta")
 		if e != nil {
 			panic(e)
 		}
@@ -114,7 +115,7 @@ Options:
 		if cmd == "set" {
 			overwrite = true
 		}
-		add(fname, bytePassword, Cred{User: user, Pass: pass, Meta: meta}, overwrite)
+		lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: pass, Meta: meta}, overwrite)
 
 	} else if cmd == "import" {
 		// Login = "xyz","cointracker.io","Login","cointracker.io","mail@domain.com",
@@ -146,11 +147,11 @@ Options:
 			}
 
 			key := strings.ReplaceAll(strings.ToLower(toks[1]), " ", "_")
-			c := Cred{User: toks[4], Pass: toks[0], Meta: toks[1], URL: toks[3], Type: toks[2]}
+			c := lib.Cred{User: toks[4], Pass: toks[0], Meta: toks[1], URL: toks[3], Type: toks[2]}
 			if Verbose {
 				fmt.Printf("C(key=%s)=%+v\n", key, c)
 			}
-			add(key, bytePassword, c, false)
+			lib.Add(key, bytePassword, c, false)
 		}
 
 	} else if cmd == "export" {
@@ -160,8 +161,8 @@ Options:
 		for name, fname := range Lookup {
 			fullFname := fmt.Sprintf("%s/%s.json.enc", DBPath, fname)
 			fmt.Printf("\n%s\n=======================\n", name)
-			var creds = File{}
-			if e := parseFile(bytePassword, fullFname, &creds); e != nil {
+			var creds = lib.File{}
+			if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
 				panic(e)
 			}
 			for id, cred := range creds.Creds {
@@ -184,9 +185,9 @@ Options:
 			if Verbose {
 				fmt.Printf("Match %s => %s\n", name, filename)
 			}
-			var creds = File{}
+			var creds = lib.File{}
 			fullFname := fmt.Sprintf("%s/%s.json.enc", DBPath, filename)
-			if e := parseFile(bytePassword, fullFname, &creds); e != nil {
+			if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
 				panic(e)
 			}
 			fmt.Printf("\n%s\n=======================\n", name)
@@ -215,8 +216,8 @@ Options:
 		}
 		// TODO: Maybe suggest if file not exists?
 
-		var creds = File{}
-		if e := parseFile(bytePassword, fname, &creds); e != nil {
+		var creds = lib.File{}
+		if e := lib.ParseFile(bytePassword, fname, &creds); e != nil {
 			panic(e)
 		}
 		for id, cred := range creds.Creds {
@@ -232,10 +233,10 @@ Options:
 		var pass []byte
 		for {
 			// Random pass
-			pass = randSeq(12)
+			pass = lib.RandSeq(12)
 			fmt.Printf("pass=%s\n", pass)
 			ok := ""
-			ok, e := getStdin("confirm to save (y)")
+			ok, e := lib.GetStdin("confirm to save (y)")
 			if e != nil {
 				panic(e)
 			}
@@ -244,11 +245,11 @@ Options:
 			}
 		}
 
-		user, e := getStdin("user")
+		user, e := lib.GetStdin("user")
 		if e != nil {
 			panic(e)
 		}
-		meta, e := getStdin("meta")
+		meta, e := lib.GetStdin("meta")
 		if e != nil {
 			panic(e)
 		}
@@ -265,11 +266,11 @@ Options:
 		fmt.Printf("pass=%s\n", pass)
 		fmt.Printf("meta=%s\n", meta)
 
-		if _, e := getStdin("confirm to save"); e != nil {
+		if _, e := lib.GetStdin("confirm to save"); e != nil {
 			panic(e)
 		}
 
-		add(fname, bytePassword, Cred{User: user, Pass: string(pass), Meta: meta}, false)
+		lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: string(pass), Meta: meta}, false)
 
 	} else {
 		fmt.Printf("No such cmd=%s\n", cmd)
