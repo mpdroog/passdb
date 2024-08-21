@@ -13,7 +13,6 @@ import (
 )
 
 var (
-	DBPath  string
 	Verbose bool
 	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
 
@@ -51,7 +50,7 @@ Options:
 	if Verbose {
 		fmt.Println(args)
 	}
-	DBPath, e = args.String("--dir")
+	lib.DBPath, e = args.String("--dir")
 	if e != nil {
 		panic(e)
 	}
@@ -79,7 +78,7 @@ Options:
 
 	// Lookup-tbl
 	{
-		fname := fmt.Sprintf("%s/lookup.json.enc", DBPath)
+		fname := fmt.Sprintf("%s/lookup.json.enc", lib.DBPath)
 		haveFile := true
 		_, e := os.Stat(fname)
 		if errors.Is(e, os.ErrNotExist) {
@@ -159,7 +158,7 @@ Options:
 			fmt.Printf("lookup=%+v\n", Lookup)
 		}
 		for name, fname := range Lookup {
-			fullFname := fmt.Sprintf("%s/%s.json.enc", DBPath, fname)
+			fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, fname)
 			fmt.Printf("\n%s\n=======================\n", name)
 			var creds = lib.File{}
 			if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
@@ -186,7 +185,7 @@ Options:
 				fmt.Printf("Match %s => %s\n", name, filename)
 			}
 			var creds = lib.File{}
-			fullFname := fmt.Sprintf("%s/%s.json.enc", DBPath, filename)
+			fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, filename)
 			if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
 				panic(e)
 			}
@@ -208,7 +207,7 @@ Options:
 			h := sha256.New()
 			h.Write([]byte(fname))
 			hash = fmt.Sprintf("%x", h.Sum(nil))
-			fname = fmt.Sprintf("%s/%s.json.enc", DBPath, hash)
+			fname = fmt.Sprintf("%s/%s.json.enc", lib.DBPath, hash)
 		}
 
 		if Verbose {
@@ -259,7 +258,7 @@ Options:
 			h := sha256.New()
 			h.Write([]byte(fname))
 			hash = fmt.Sprintf("%x", h.Sum(nil))
-			fname = fmt.Sprintf("%s/%s.json.enc", DBPath, hash)
+			fname = fmt.Sprintf("%s/%s.json.enc", lib.DBPath, hash)
 		}
 
 		fmt.Printf("user=%s\n", user)
