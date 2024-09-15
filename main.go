@@ -15,9 +15,6 @@ import (
 var (
 	Verbose bool
 	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
-
-	// Lookup-table for all files in creds.d dir
-	Lookup map[string]string
 )
 
 func main() {
@@ -82,16 +79,25 @@ Options:
 		haveFile := true
 		_, e := os.Stat(fname)
 		if errors.Is(e, os.ErrNotExist) {
-			Lookup = make(map[string]string)
+			lib.Lookup = make(map[string]string)
 			haveFile = false
 		} else if e != nil {
 			panic(e)
+		}
+
+		if !haveFile {
+			fmt.Printf("Missing lookup.json.enc\n")
+			os.Exit(1)
+			return
 		}
 
 		if haveFile {
 			if e := lib.ParseFile(bytePassword, fname, &lib.Lookup); e != nil {
 				panic(e)
 			}
+		}
+		if Verbose {
+			fmt.Printf("Lookup=%d entries\n", len(lib.Lookup))
 		}
 	}
 
@@ -155,9 +161,9 @@ Options:
 
 	} else if cmd == "export" {
 		if Verbose {
-			fmt.Printf("lookup=%+v\n", Lookup)
+			fmt.Printf("lookup=%+v\n", lib.Lookup)
 		}
-		for name, fname := range Lookup {
+		for name, fname := range lib.Lookup {
 			fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, fname)
 			fmt.Printf("\n%s\n=======================\n", name)
 			var creds = lib.File{}
@@ -176,8 +182,11 @@ Options:
 		}
 
 	} else if cmd == "find" {
-		for name, filename := range Lookup {
+		for name, filename := range lib.Lookup {
 			if !strings.Contains(name, fname) {
+				if Verbose {
+					fmt.Printf("Mismatch %s => %s\n", name, filename)
+				}
 				// Keyname does not match
 				continue
 			}
