@@ -23,12 +23,13 @@ func findCmd(fname, arg string) {
 		if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
 			panic(e)
 		}
+
 		fmt.Printf("\n%s\n=======================\n", name)
 		for id, cred := range creds.Creds {
-			fmt.Printf("user=%s\n", cred.User)
-			fmt.Printf("pass=%s\n", cred.Pass)
-			fmt.Printf("meta=%s\n", cred.Meta)
-			fmt.Printf("url=%s\n", cred.URL)
+			fmt.Printf("user: %s\n", cred.User)
+			fmt.Printf("pass: %s\n", cred.Pass)
+			fmt.Printf("meta: %s\n", cred.Meta)
+			fmt.Printf("url: %s\n", cred.URL)
 			if id+1 != len(creds.Creds) {
 				fmt.Printf("\n")
 			}
