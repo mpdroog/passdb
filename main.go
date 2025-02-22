@@ -8,56 +8,14 @@ import (
 	"os"
 )
 
+type CmdFunc func(string, string)
+
 var (
 	Help         bool
 	Verbose      bool
 	letters      = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
 	bytePassword []byte
-)
-
-func showHelp() {
-	usage := `Passdb.
-  Password manager that optimises for easily distributing your passwords.
-
-Usage:
-  passdb find <name> [--verbose] [--dir=<dir>]
-  passdb get <name> [--verbose] [--dir=<dir>]
-  passdb add <name> [--verbose] [--dir=<dir>]
-  passdb set <name> [--verbose] [--dir=<dir>]
-  passdb generate <name> [--verbose] [--dir=<dir>]
-  passdb import <file> [--verbose] [--dir=<dir>]
-  passdb export all [--verbose] [--dir=<dir>]
-  passdb -h | --help
-
-Options:
-  -h --help           Show this screen.
-  -v --verbose        Verbose mode.
-  -d --dir=<dir>      Credentials-dir [default: ./creds.d].`
-
-	fmt.Println(usage)
-}
-
-type CmdFunc func(string, string)
-
-func main() {
-	flag.StringVar(&lib.DBPath, "d", "./creds.d", "Credentials-dir")
-	flag.BoolVar(&Verbose, "v", false, "Verbose-mode (log more)")
-	flag.BoolVar(&Help, "h", false, "Show this screen")
-
-	flag.Parse()
-	args := flag.Args()
-
-	if Verbose {
-		fmt.Println(args)
-	}
-	if Help {
-		showHelp()
-		os.Exit(0)
-		return
-	}
-
-	// TODO: Function pointer..
-	validCmds := map[string]CmdFunc{
+	validCmds    = map[string]CmdFunc{
 		"find":     findCmd,
 		"get":      getCmd,
 		"add":      addCmd,
@@ -66,18 +24,66 @@ func main() {
 		"export":   exportCmd,
 		"generate": generateCmd,
 	}
+)
+
+func showHelp() {
+	usage := `Passdb.
+  Password manager that optimises for easily distributing your passwords.
+
+Usage:
+  passdb find <name> [-v] [-d=<dir>]
+  passdb get <name> [-v] [-d=<dir>]
+  passdb add <name> [-v] [-d=<dir>]
+  passdb set <name> [-v] [-d=<dir>]
+  passdb generate <name> [-v] [-d=<dir>]
+  passdb import <file> [-v] [-d=<dir>]
+  passdb export all [-v] [-d=<dir>]
+  passdb -h
+
+Options:
+  -h                  Show this screen.
+  -v                  Verbose mode.
+  -d=<dir>            Credentials-dir [default: ./creds.d].`
+
+	fmt.Println(usage)
+}
+
+func main() {
+	flag.StringVar(&lib.DBPath, "d", "./creds.d", "Credentials-dir")
+	flag.BoolVar(&Verbose, "v", false, "Verbose-mode (log more)")
+	flag.BoolVar(&Help, "h", false, "Show this screen")
+
+	flag.Usage = showHelp
+	flag.Parse()
+	args := flag.Args()
+
+	if Verbose {
+		fmt.Printf("args=%+v\n", args)
+	}
+	if Help {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if len(args) >= 2 {
+		if _, ok := validCmds[args[0]]; !ok {
+			if _, ok := validCmds[args[1]]; ok {
+				// Weird OS, strip off one (i.e. terminal on Android)
+				args = args[1:]
+			}
+		}
+	}
+
 	if len(args) < 2 {
-		showHelp()
+		flag.Usage()
 		os.Exit(1)
-		return
 	}
 
 	fn, found := validCmds[args[0]]
 	if !found {
 		fmt.Printf("Invalid cmd=%s\n", args[0])
-		showHelp()
+		flag.Usage()
 		os.Exit(1)
-		return
 	}
 	cmd := args[0]
 	fname := args[1]
@@ -87,7 +93,6 @@ func main() {
 	if e != nil {
 		fmt.Printf("Failed reading pass\n")
 		os.Exit(1)
-		return
 	}
 
 	// Lookup-tbl
