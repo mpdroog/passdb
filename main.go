@@ -4,8 +4,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/inancgumus/screen"
 	"github.com/mpdroog/passdb/lib"
 	"os"
+	"time"
 )
 
 type CmdFunc func(string, string)
@@ -133,4 +135,6 @@ func main() {
 	}
 
 	fn(fname, cmd)
+	time.Sleep(10 * time.Second)
+	screen.Clear()
 }
