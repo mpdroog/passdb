@@ -1,23 +1,21 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/csv"
 	"errors"
+	"flag"
 	"fmt"
-	"github.com/docopt/docopt-go"
 	"github.com/mpdroog/passdb/lib"
-	"io"
 	"os"
-	"strings"
 )
 
 var (
-	Verbose bool
-	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
+	Help         bool
+	Verbose      bool
+	letters      = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
+	bytePassword []byte
 )
 
-func main() {
+func showHelp() {
 	usage := `Passdb.
   Password manager that optimises for easily distributing your passwords.
 
@@ -28,7 +26,7 @@ Usage:
   passdb set <name> [--verbose] [--dir=<dir>]
   passdb generate <name> [--verbose] [--dir=<dir>]
   passdb import <file> [--verbose] [--dir=<dir>]
-  passdb export [--verbose] [--dir=<dir>]
+  passdb export all [--verbose] [--dir=<dir>]
   passdb -h | --help
 
 Options:
@@ -36,42 +34,61 @@ Options:
   -v --verbose        Verbose mode.
   -d --dir=<dir>      Credentials-dir [default: ./creds.d].`
 
-	args, e := docopt.ParseDoc(usage)
-	if e != nil {
-		panic(e)
-	}
-	Verbose, e = args.Bool("--verbose")
-	if e != nil {
-		panic(e)
-	}
+	fmt.Println(usage)
+}
+
+type CmdFunc func(string, string)
+
+func main() {
+	flag.StringVar(&lib.DBPath, "d", "./creds.d", "Credentials-dir")
+	flag.BoolVar(&Verbose, "v", false, "Verbose-mode (log more)")
+	flag.BoolVar(&Help, "h", false, "Show this screen")
+
+	flag.Parse()
+	args := flag.Args()
+
 	if Verbose {
 		fmt.Println(args)
 	}
-	lib.DBPath, e = args.String("--dir")
-	if e != nil {
-		panic(e)
+	if Help {
+		showHelp()
+		os.Exit(0)
+		return
 	}
 
-	cmd := ""
-	// TODO: Kind of duplicate
-	for _, k := range []string{"find", "get", "add", "set", "import", "export", "generate"} {
-		if ok, _ := args.Bool(k); ok {
-			cmd = k
-			break
-		}
+	// TODO: Function pointer..
+	validCmds := map[string]CmdFunc{
+		"find":     findCmd,
+		"get":      getCmd,
+		"add":      addCmd,
+		"set":      addCmd,
+		"import":   importCmd,
+		"export":   exportCmd,
+		"generate": generateCmd,
 	}
-	fname, _ := args.String("<name>")
-	if len(fname) == 0 {
-		// Kind of lazy
-		fname, _ = args.String("<file>")
+	if len(args) < 2 {
+		showHelp()
+		os.Exit(1)
+		return
 	}
-	fname = strings.ToLower(fname)
 
-	bytePassword, e := lib.GetPass()
-	if e != nil {
-		panic(e)
+	fn, found := validCmds[args[0]]
+	if !found {
+		fmt.Printf("Invalid cmd=%s\n", args[0])
+		showHelp()
+		os.Exit(1)
+		return
 	}
-	fmt.Println() // newline after passfield
+	cmd := args[0]
+	fname := args[1]
+
+	var e error
+	bytePassword, e = lib.GetPass()
+	if e != nil {
+		fmt.Printf("Failed reading pass\n")
+		os.Exit(1)
+		return
+	}
 
 	// Lookup-tbl
 	{
@@ -82,17 +99,26 @@ Options:
 			lib.Lookup = make(map[string]string)
 			haveFile = false
 		} else if e != nil {
-			panic(e)
+			fmt.Printf("ERR: %s\n", e.Error())
+			os.Exit(1)
+			return
 		}
 
 		if !haveFile {
-			fmt.Printf("Missing lookup.json.enc\n")
+			fmt.Printf("ERR: Missing lookup.json.enc\n")
 			os.Exit(1)
 			return
 		}
 
 		if haveFile {
-			if e := lib.ParseFile(bytePassword, fname, &lib.Lookup); e != nil {
+			e := lib.ParseFile(bytePassword, fname, &lib.Lookup)
+			fmt.Printf("\n") // newline
+			if e != nil {
+				if e.Error() == "failed to decrypt and authenticate payload chunk" {
+					fmt.Printf("ERR: Invalid master password\n")
+					os.Exit(1)
+					return
+				}
 				panic(e)
 			}
 		}
@@ -101,188 +127,5 @@ Options:
 		}
 	}
 
-	if cmd == "add" || cmd == "set" {
-		user, e := lib.GetStdin("user")
-		if e != nil {
-			panic(e)
-		}
-		// TODO: Hide pass from shell?
-		pass, e := lib.GetStdin("pass")
-		if e != nil {
-			panic(e)
-		}
-		meta, e := lib.GetStdin("meta")
-		if e != nil {
-			panic(e)
-		}
-
-		overwrite := false
-		if cmd == "set" {
-			overwrite = true
-		}
-		lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: pass, Meta: meta}, overwrite)
-
-	} else if cmd == "import" {
-		// Login = "xyz","cointracker.io","Login","cointracker.io","mail@domain.com",
-		// Wireless Router = "passss","Networkname","Wireless Router",,,
-		// Bank Account = "1234","Bank Business","Bank Account",,,
-		// Password = "xxx","eBay","Password","ebay.com",,
-		if Verbose {
-			fmt.Printf("import=%s\n", fname)
-		}
-		fd, e := os.Open(fname)
-		if e != nil {
-			panic(e)
-		}
-		defer fd.Close()
-
-		// TODO: Cache file through bufferreader?
-		r := csv.NewReader(fd)
-
-		for {
-			toks, e := r.Read()
-			if e == io.EOF {
-				break
-			}
-			if e != nil {
-				panic(e)
-			}
-			if Verbose {
-				fmt.Printf("%+v\n", toks)
-			}
-
-			key := strings.ReplaceAll(strings.ToLower(toks[1]), " ", "_")
-			c := lib.Cred{User: toks[4], Pass: toks[0], Meta: toks[1], URL: toks[3], Type: toks[2]}
-			if Verbose {
-				fmt.Printf("C(key=%s)=%+v\n", key, c)
-			}
-			lib.Add(key, bytePassword, c, false)
-		}
-
-	} else if cmd == "export" {
-		if Verbose {
-			fmt.Printf("lookup=%+v\n", lib.Lookup)
-		}
-		for name, fname := range lib.Lookup {
-			fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, fname)
-			fmt.Printf("\n%s\n=======================\n", name)
-			var creds = lib.File{}
-			if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
-				panic(e)
-			}
-			for id, cred := range creds.Creds {
-				fmt.Printf("user=%s\n", cred.User)
-				fmt.Printf("pass=%s\n", cred.Pass)
-				fmt.Printf("meta=%s\n", cred.Meta)
-				fmt.Printf("url=%s\n", cred.URL)
-				if id+1 != len(creds.Creds) {
-					fmt.Printf("\n")
-				}
-			}
-		}
-
-	} else if cmd == "find" {
-		for name, filename := range lib.Lookup {
-			if !strings.Contains(name, fname) {
-				if Verbose {
-					fmt.Printf("Mismatch %s => %s\n", name, filename)
-				}
-				// Keyname does not match
-				continue
-			}
-			if Verbose {
-				fmt.Printf("Match %s => %s\n", name, filename)
-			}
-			var creds = lib.File{}
-			fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, filename)
-			if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
-				panic(e)
-			}
-			fmt.Printf("\n%s\n=======================\n", name)
-			for id, cred := range creds.Creds {
-				fmt.Printf("user=%s\n", cred.User)
-				fmt.Printf("pass=%s\n", cred.Pass)
-				fmt.Printf("meta=%s\n", cred.Meta)
-				fmt.Printf("url=%s\n", cred.URL)
-				if id+1 != len(creds.Creds) {
-					fmt.Printf("\n")
-				}
-			}
-		}
-
-	} else if cmd == "get" {
-		var hash string
-		{
-			h := sha256.New()
-			h.Write([]byte(fname))
-			hash = fmt.Sprintf("%x", h.Sum(nil))
-			fname = fmt.Sprintf("%s/%s.json.enc", lib.DBPath, hash)
-		}
-
-		if Verbose {
-			fmt.Printf("Read=%s\n", fname)
-		}
-		// TODO: Maybe suggest if file not exists?
-
-		var creds = lib.File{}
-		if e := lib.ParseFile(bytePassword, fname, &creds); e != nil {
-			panic(e)
-		}
-		for id, cred := range creds.Creds {
-			fmt.Printf("user=%s\n", cred.User)
-			fmt.Printf("pass=%s\n", cred.Pass)
-			fmt.Printf("meta=%s\n", cred.Meta)
-			fmt.Printf("url=%s\n", cred.URL)
-			if id+1 != len(creds.Creds) {
-				fmt.Printf("\n")
-			}
-		}
-	} else if cmd == "generate" {
-		var pass []byte
-		for {
-			// Random pass
-			pass = lib.RandSeq(12)
-			fmt.Printf("pass=%s\n", pass)
-			ok := ""
-			ok, e := lib.GetStdin("confirm to save (y)")
-			if e != nil {
-				panic(e)
-			}
-			if ok == "y" {
-				break
-			}
-		}
-
-		user, e := lib.GetStdin("user")
-		if e != nil {
-			panic(e)
-		}
-		meta, e := lib.GetStdin("meta")
-		if e != nil {
-			panic(e)
-		}
-
-		var hash string
-		{
-			h := sha256.New()
-			h.Write([]byte(fname))
-			hash = fmt.Sprintf("%x", h.Sum(nil))
-			fname = fmt.Sprintf("%s/%s.json.enc", lib.DBPath, hash)
-		}
-
-		fmt.Printf("user=%s\n", user)
-		fmt.Printf("pass=%s\n", pass)
-		fmt.Printf("meta=%s\n", meta)
-
-		if _, e := lib.GetStdin("confirm to save"); e != nil {
-			panic(e)
-		}
-
-		lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: string(pass), Meta: meta}, false)
-
-	} else {
-		fmt.Printf("No such cmd=%s\n", cmd)
-		os.Exit(1)
-		return
-	}
+	fn(fname, cmd)
 }
