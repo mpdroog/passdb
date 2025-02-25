@@ -25,6 +25,7 @@ var (
 		"import":   importCmd,
 		"export":   exportCmd,
 		"generate": generateCmd,
+		"load":     loadCmd,
 	}
 )
 
@@ -35,6 +36,7 @@ func showHelp() {
 Usage:
   passdb find <name> [-v] [-d=<dir>]
   passdb get <name> [-v] [-d=<dir>]
+  passdb load <hash> [-v] [-d=<dir>]
   passdb add <name> [-v] [-d=<dir>]
   passdb set <name> [-v] [-d=<dir>]
   passdb generate <name> [-v] [-d=<dir>]
