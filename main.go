@@ -1,16 +1,18 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/inancgumus/screen"
 	"github.com/mpdroog/passdb/lib"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
-type CmdFunc func(string, string)
+type CmdFunc func(string, string) (bool, error)
 
 var (
 	Help         bool
@@ -90,7 +92,7 @@ func main() {
 		os.Exit(1)
 	}
 	cmd := args[0]
-	fname := args[1]
+	name := args[1]
 
 	var e error
 	bytePassword, e = lib.GetPass()
@@ -98,45 +100,40 @@ func main() {
 		fmt.Printf("Failed reading pass\n")
 		os.Exit(1)
 	}
+	fmt.Printf("\n")
 
-	// Lookup-tbl
-	{
-		fname := fmt.Sprintf("%s/lookup.json.enc", lib.DBPath)
-		haveFile := true
-		_, e := os.Stat(fname)
-		if errors.Is(e, os.ErrNotExist) {
-			lib.Lookup = make(map[string]string)
-			haveFile = false
-		} else if e != nil {
-			fmt.Printf("ERR: %s\n", e.Error())
-			os.Exit(1)
-			return
+	// Lookup 2.0, dynamically create it
+	lib.Lookup = make(map[string]string)
+	e = filepath.WalkDir(lib.DBPath, func(s string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
 		}
 
-		if !haveFile {
-			fmt.Printf("ERR: Missing lookup.json.enc\n")
-			os.Exit(1)
-			return
-		}
-
-		if haveFile {
-			e := lib.ParseFile(bytePassword, fname, &lib.Lookup)
-			fmt.Printf("\n") // newline
-			if e != nil {
-				if e.Error() == "failed to decrypt and authenticate payload chunk" {
-					fmt.Printf("ERR: Invalid master password\n")
-					os.Exit(1)
-					return
-				}
-				panic(e)
-			}
-		}
-		if Verbose {
-			fmt.Printf("Lookup=%d entries\n", len(lib.Lookup))
-		}
+		fname, _ := strings.CutSuffix(d.Name(), ".json.enc")
+		lib.Lookup[fname] = fname
+		return nil
+	})
+	if e != nil {
+		fmt.Printf("Failed creating dynamic index, e=%s\n", e.Error())
+		os.Exit(1)
 	}
 
-	fn(fname, cmd)
-	time.Sleep(10 * time.Second)
-	screen.Clear()
+	// TODO: only sleep if true by fn?
+	clear, e := fn(name, cmd)
+	if e != nil {
+		fmt.Printf("ERR %s\n", e.Error())
+		os.Exit(1)
+		return
+	}
+
+	if clear {
+	}
+	if false {
+		//fmt.Printf(">> Sleep 10sec >> clear screen\n")
+		time.Sleep(10 * time.Second)
+		screen.Clear()
+	}
 }

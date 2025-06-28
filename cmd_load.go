@@ -5,7 +5,7 @@ import (
 	"github.com/mpdroog/passdb/lib"
 )
 
-func loadCmd(fname, arg string) {
+func loadCmd(fname, arg string) (bool, error) {
 	fname = fmt.Sprintf("%s/%s.json.enc", lib.DBPath, fname)
 
 	if Verbose {
@@ -15,7 +15,7 @@ func loadCmd(fname, arg string) {
 
 	var creds = lib.File{}
 	if e := lib.ParseFile(bytePassword, fname, &creds); e != nil {
-		panic(e)
+		return false, e
 	}
 	for id, cred := range creds.Creds {
 		fmt.Printf("user=%s\n", cred.User)
@@ -26,4 +26,6 @@ func loadCmd(fname, arg string) {
 			fmt.Printf("\n")
 		}
 	}
+
+	return true, nil
 }

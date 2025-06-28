@@ -5,16 +5,18 @@ import (
 	"github.com/mpdroog/passdb/lib"
 )
 
-func exportCmd(fname, arg string) {
+func exportCmd(fname, arg string) (bool, error) {
 	if Verbose {
 		fmt.Printf("lookup=%+v\n", lib.Lookup)
 	}
+
 	for name, fname := range lib.Lookup {
 		fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, fname)
 		fmt.Printf("\n%s\n=======================\n", name)
 		var creds = lib.File{}
 		if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
-			panic(e)
+			fmt.Printf("ERR: File(%s) e=%s\n", fullFname, e.Error())
+			continue
 		}
 		for id, cred := range creds.Creds {
 			fmt.Printf("user=%s\n", cred.User)
@@ -26,4 +28,6 @@ func exportCmd(fname, arg string) {
 			}
 		}
 	}
+
+	return false, nil
 }

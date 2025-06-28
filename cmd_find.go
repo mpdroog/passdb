@@ -6,26 +6,33 @@ import (
 	"strings"
 )
 
-func findCmd(fname, arg string) {
-	for name, filename := range lib.Lookup {
-		if !strings.Contains(name, fname) {
+func findCmd(search, arg string) (bool, error) {
+	m := false
+
+	for name, _ := range lib.Lookup {
+		is_match := strings.Contains(name, search)
+		if !is_match {
 			if Verbose {
-				fmt.Printf("Mismatch %s => %s\n", name, filename)
+				fmt.Printf("Mismatch (%s != %s)\n", search, name)
 			}
 			// Keyname does not match
 			continue
 		}
 		if Verbose {
-			fmt.Printf("Match %s => %s\n", name, filename)
+			fmt.Printf("Contains (%s == %s)\n", search, name)
 		}
+
 		var creds = lib.File{}
-		fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, filename)
+		fullFname := fmt.Sprintf("%s/%s.json.enc", lib.DBPath, name)
 		if e := lib.ParseFile(bytePassword, fullFname, &creds); e != nil {
-			panic(e)
+			return false, e
 		}
 
 		fmt.Printf("\n%s\n=======================\n", name)
 		for id, cred := range creds.Creds {
+			// match, showing passwords so use timer and clear screen
+			m = true
+
 			fmt.Printf("user: %s\n", cred.User)
 			fmt.Printf("pass: %s\n", cred.Pass)
 			fmt.Printf("meta: %s\n", cred.Meta)
@@ -35,4 +42,6 @@ func findCmd(fname, arg string) {
 			}
 		}
 	}
+
+	return m, nil
 }

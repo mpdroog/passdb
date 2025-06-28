@@ -6,7 +6,7 @@ import (
 	"github.com/mpdroog/passdb/lib"
 )
 
-func generateCmd(fname, arg string) {
+func generateCmd(fname, arg string) (bool, error) {
 	var pass []byte
 	for {
 		// Random pass
@@ -15,7 +15,7 @@ func generateCmd(fname, arg string) {
 		ok := ""
 		ok, e := lib.GetStdin("confirm to save (y)")
 		if e != nil {
-			panic(e)
+			return false, e
 		}
 		if ok == "y" {
 			break
@@ -24,11 +24,11 @@ func generateCmd(fname, arg string) {
 
 	user, e := lib.GetStdin("user")
 	if e != nil {
-		panic(e)
+		return false, e
 	}
 	meta, e := lib.GetStdin("meta")
 	if e != nil {
-		panic(e)
+		return false, e
 	}
 
 	var hash string
@@ -44,8 +44,9 @@ func generateCmd(fname, arg string) {
 	fmt.Printf("meta=%s\n", meta)
 
 	if _, e := lib.GetStdin("confirm to save"); e != nil {
-		panic(e)
+		return false, e
 	}
 
 	lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: string(pass), Meta: meta}, false)
+	return true, nil
 }

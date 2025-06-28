@@ -2,7 +2,6 @@ package lib
 
 import (
 	"bufio"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -126,63 +125,43 @@ func WriteFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 }
 
 // add wraps the writeFile-func by offering an overwrite-option
-func Add(name string, bytePassword []byte, cred Cred, overwrite bool) {
-	var hname string
-	{
-		h := sha256.New()
-		h.Write([]byte(name))
-		hname = fmt.Sprintf("%x", h.Sum(nil))
+func Add(name string, bytePassword []byte, cred Cred, overwrite bool) error {
+	fname := fmt.Sprintf("%s/%s.json.enc", DBPath, name)
+	c := File{}
+
+	if _, e := os.Stat(fname); e == nil {
+		if e := ParseFile(bytePassword, fname, &c); e != nil {
+			return e
+		}
+	} else if !errors.Is(e, os.ErrNotExist) {
+		// Only panic when error something else than nonexists
+		return e
 	}
 
-	{
-		fname := fmt.Sprintf("%s/%s.json.enc", DBPath, hname)
-		c := File{}
+	var delCreds []Cred
+	if overwrite {
+		for _, oldCred := range c.Creds {
+			delCreds = append(delCreds, oldCred)
+		}
+		c = File{}
+	}
+	c.Creds = append(c.Creds, cred)
 
-		if _, e := os.Stat(fname); e == nil {
-			if e := ParseFile(bytePassword, fname, &c); e != nil {
-				panic(e)
-			}
-		} else if !errors.Is(e, os.ErrNotExist) {
-			// Only panic when error something else than nonexists
-			panic(e)
-		}
-
-		var delCreds []Cred
-		if overwrite {
-			for _, oldCred := range c.Creds {
-				delCreds = append(delCreds, oldCred)
-			}
-			c = File{}
-		}
-		c.Creds = append(c.Creds, cred)
-
-		if Verbose {
-			fmt.Printf("Write=%v to %s\n", c, fname)
-		}
-
-		nonce := RandSeq(8)
-		privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
-		if e != nil {
-			panic(e)
-		}
-		if e := WriteFile(nonce, privKey, fname, &c); e != nil {
-			panic(e)
-		}
-		for _, oldCred := range delCreds {
-			fmt.Printf("Deleted %v\n", oldCred)
-		}
+	if Verbose {
+		fmt.Printf("Write=%v to %s\n", c, fname)
 	}
 
-	// Now also update Lookup
-	{
-		nonce := RandSeq(8)
-		privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
-		if e != nil {
-			panic(e)
-		}
-		Lookup[name] = hname
-		if e := WriteFile(nonce, privKey, DBPath+"/lookup.json.enc", Lookup); e != nil {
-			panic(e)
-		}
+	nonce := RandSeq(8)
+	privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
+	if e != nil {
+		return e
 	}
+	if e := WriteFile(nonce, privKey, fname, &c); e != nil {
+		return e
+	}
+	for _, oldCred := range delCreds {
+		fmt.Printf("Deleted %v\n", oldCred)
+	}
+
+	return nil
 }

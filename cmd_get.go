@@ -1,20 +1,11 @@
 package main
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"github.com/mpdroog/passdb/lib"
 )
 
-func getCmd(fname, arg string) {
-	var hash string
-	{
-		h := sha256.New()
-		h.Write([]byte(fname))
-		hash = fmt.Sprintf("%x", h.Sum(nil))
-		fname = fmt.Sprintf("%s/%s.json.enc", lib.DBPath, hash)
-	}
-
+func getCmd(fname, arg string) (bool, error) {
 	if Verbose {
 		fmt.Printf("Read=%s\n", fname)
 	}
@@ -22,7 +13,7 @@ func getCmd(fname, arg string) {
 
 	var creds = lib.File{}
 	if e := lib.ParseFile(bytePassword, fname, &creds); e != nil {
-		panic(e)
+		return false, e
 	}
 	for id, cred := range creds.Creds {
 		fmt.Printf("user=%s\n", cred.User)
@@ -33,4 +24,6 @@ func getCmd(fname, arg string) {
 			fmt.Printf("\n")
 		}
 	}
+
+	return true, nil
 }

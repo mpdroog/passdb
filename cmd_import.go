@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func importCmd(fname, arg string) {
+func importCmd(fname, arg string) (bool, error) {
 	// 1Password CSV format
 	// Login = "xyz","cointracker.io","Login","cointracker.io","mail@domain.com",
 	// Wireless Router = "passss","Networkname","Wireless Router",,,
@@ -20,7 +20,7 @@ func importCmd(fname, arg string) {
 	}
 	fd, e := os.Open(fname)
 	if e != nil {
-		panic(e)
+		return false, e
 	}
 	defer fd.Close()
 
@@ -33,7 +33,7 @@ func importCmd(fname, arg string) {
 			break
 		}
 		if e != nil {
-			panic(e)
+			return false, e
 		}
 		if Verbose {
 			fmt.Printf("%+v\n", toks)
@@ -46,4 +46,6 @@ func importCmd(fname, arg string) {
 		}
 		lib.Add(key, bytePassword, c, false)
 	}
+
+	return false, nil
 }
