@@ -12,14 +12,14 @@ func findCmd(search, arg string) (bool, error) {
 	for name, _ := range lib.Lookup {
 		is_match := strings.Contains(name, search)
 		if !is_match {
-			if Verbose {
+			if false {
 				fmt.Printf("Mismatch (%s != %s)\n", search, name)
 			}
 			// Keyname does not match
 			continue
 		}
 		if Verbose {
-			fmt.Printf("Contains (%s == %s)\n", search, name)
+			fmt.Printf("Filematch %s\n", name)
 		}
 
 		var creds = lib.File{}
