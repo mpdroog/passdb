@@ -24,6 +24,5 @@ func addCmd(fname, cmd string) (bool, error) {
 		overwrite = true
 	}
 
-	lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: pass, Meta: meta}, overwrite)
-	return false, nil
+	return false, lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: pass, Meta: meta}, overwrite)
 }

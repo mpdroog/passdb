@@ -51,7 +51,9 @@ func importCmd(fname, arg string) (bool, error) {
 		if Verbose {
 			fmt.Printf("C(key=%s)=%+v\n", key, c)
 		}
-		lib.Add(key, bytePassword, c, false)
+		if e := lib.Add(key, bytePassword, c, false); e != nil {
+			return false, e
+		}
 	}
 
 	return false, nil
