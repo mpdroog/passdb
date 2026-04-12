@@ -69,6 +69,9 @@ func ParseFile(bytePassword []byte, fname string, out interface{}) error {
 	}
 
 	privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
+	if e != nil {
+		return e
+	}
 	rs, e := stream.NewReader(privKey, r)
 	if e != nil {
 		return e
@@ -108,11 +111,11 @@ func WriteFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 		return e
 	}
 	defer func() {
-		if e := sw.Close(); e != nil {
-			fmt.Printf("writeFile.StreamClose e=%s\n", e.Error())
-		}
 		if e := w.Flush(); e != nil {
 			fmt.Printf("writeFile.Flush e=%s\n", e.Error())
+		}
+		if e := sw.Close(); e != nil {
+			fmt.Printf("writeFile.StreamClose e=%s\n", e.Error())
 		}
 	}()
 
