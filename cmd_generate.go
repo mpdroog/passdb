@@ -12,7 +12,6 @@ func generateCmd(fname, arg string) (bool, error) {
 		// Random pass
 		pass = lib.RandSeq(12)
 		fmt.Printf("pass=%s\n", pass)
-		ok := ""
 		ok, e := lib.GetStdin("confirm to save (y)")
 		if e != nil {
 			return false, e
@@ -47,6 +46,5 @@ func generateCmd(fname, arg string) (bool, error) {
 		return false, e
 	}
 
-	lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: string(pass), Meta: meta}, false)
-	return true, nil
+	return true, lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: string(pass), Meta: meta}, false)
 }

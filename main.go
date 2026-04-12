@@ -16,7 +16,6 @@ var (
 	Help         bool
 	Verbose      bool
 	QR           bool
-	letters      = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
 	bytePassword []byte
 	validCmds    = map[string]CmdFunc{
 		"find":     findCmd,

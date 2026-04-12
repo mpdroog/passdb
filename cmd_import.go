@@ -20,11 +20,15 @@ func importCmd(fname, arg string) (bool, error) {
 	if Verbose {
 		fmt.Printf("import=%s\n", fname)
 	}
-	fd, e := os.Open(fname)
+	fd, e := os.Open(fname) //nolint:gosec // caller-supplied import file path is intentional
 	if e != nil {
 		return false, e
 	}
-	defer fd.Close()
+	defer func() {
+		if e := fd.Close(); e != nil {
+			fmt.Printf("importCmd.Close e=%s\n", e.Error())
+		}
+	}()
 
 	// TODO: Cache file through bufferreader?
 	r := csv.NewReader(fd)

@@ -15,7 +15,7 @@ func findCmd(search, arg string) (bool, error) {
 	}
 	m := false
 
-	for name, _ := range lib.Lookup {
+	for name := range lib.Lookup {
 		is_match := strings.Contains(name, search)
 		if !is_match {
 			if false {

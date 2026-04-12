@@ -13,10 +13,13 @@ import (
 	"io"
 
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/poly1305"
 )
 
-const ChunkSize = 64 * 1024
+const (
+	ChunkSize = 64 * 1024
+	// tagSize is the Poly1305 authentication tag size in bytes.
+	tagSize = 16
+)
 
 type Reader struct {
 	a   cipher.AEAD
@@ -30,7 +33,7 @@ type Reader struct {
 }
 
 const (
-	encChunkSize  = ChunkSize + poly1305.TagSize
+	encChunkSize  = ChunkSize + tagSize
 	lastChunkFlag = 0x01
 )
 
@@ -95,10 +98,10 @@ func (r *Reader) readChunk() (last bool, err error) {
 	in := r.buf[:]
 	n, err := io.ReadFull(r.src, in)
 	switch {
-	case err == io.EOF:
+	case errors.Is(err, io.EOF):
 		// A message can't end without a marked chunk. This message is truncated.
 		return false, io.ErrUnexpectedEOF
-	case err == io.ErrUnexpectedEOF:
+	case errors.Is(err, io.ErrUnexpectedEOF):
 		// The last chunk can be short, but not empty unless it's the first and
 		// only chunk.
 		if !nonceIsZero(&r.nonce) && n == r.a.Overhead() {

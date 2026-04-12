@@ -21,5 +21,5 @@ func GetStdin(question string) (string, error) {
 // GetPass asks for a password with echo disabled so typed characters are hidden.
 func GetPass(question string) ([]byte, error) {
 	fmt.Print(question + ": ")
-	return term.ReadPassword(int(syscall.Stdin))
+	return term.ReadPassword(syscall.Stdin)
 }

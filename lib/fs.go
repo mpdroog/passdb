@@ -46,7 +46,7 @@ func ScryptKey(bytePassword []byte, nonce [8]byte) ([]byte, error) {
 
 // parseFile reads the creds-dir with given pass
 func ParseFile(bytePassword []byte, fname string, out interface{}) error {
-	fd, e := os.Open(fname)
+	fd, e := os.Open(fname) //nolint:gosec // caller is responsible for sanitizing fname
 	if e != nil {
 		return e
 	}
@@ -65,7 +65,7 @@ func ParseFile(bytePassword []byte, fname string, out interface{}) error {
 		return e
 	}
 	if n != 8 {
-		return fmt.Errorf("Reading nonce failed")
+		return fmt.Errorf("reading nonce failed")
 	}
 
 	privKey, e := ScryptKey(bytePassword, ([8]byte)(nonce))
@@ -86,7 +86,7 @@ func ParseFile(bytePassword []byte, fname string, out interface{}) error {
 
 // writeFile stores encrypted(json(f-var)) in given path
 func WriteFile(nonce []byte, privKey []byte, path string, f interface{}) error {
-	fd, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	fd, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600) //nolint:gosec // caller is responsible for sanitizing path
 	if e != nil {
 		return e
 	}
@@ -103,7 +103,7 @@ func WriteFile(nonce []byte, privKey []byte, path string, f interface{}) error {
 		return e
 	}
 	if n != 8 {
-		return fmt.Errorf("Failed writing nonce")
+		return fmt.Errorf("failed writing nonce")
 	}
 
 	sw, e := stream.NewWriter(privKey, w)
@@ -141,9 +141,7 @@ func Add(name string, bytePassword []byte, cred Cred, overwrite bool) error {
 
 	var delCreds []Cred
 	if overwrite {
-		for _, oldCred := range c.Creds {
-			delCreds = append(delCreds, oldCred)
-		}
+		delCreds = append(delCreds, c.Creds...)
 		c = File{}
 	}
 	c.Creds = append(c.Creds, cred)

@@ -1,0 +1,55 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck        # unchecked errors
+    - staticcheck     # comprehensive static analysis (includes gosimple)
+    - unused          # unused code
+    - govet           # suspicious constructs
+    - ineffassign     # assignments never used
+    - bodyclose       # unclosed HTTP response bodies
+    - errorlint       # error wrapping issues
+    - gocritic        # opinionated style checks
+    - misspell        # common spelling mistakes
+    - unconvert       # unnecessary type conversions
+    - unparam         # unused function parameters
+    - nakedret        # naked returns in long functions
+    - noctx           # HTTP requests without context
+    - reassign        # reassignment of top-level variables
+    - asasalint       # pass []any as any in variadic params
+    - bidichk         # dangerous unicode bidi characters
+    - durationcheck   # incorrect duration multiplication
+    - copyloopvar     # loop variable capture (replaces exportloopref)
+    - makezero        # slice zero-length init with append
+    - nilerr          # returning nil with non-nil error
+    - nosprintfhostport # misuse of Sprintf for host:port
+    - predeclared     # shadowing predeclared identifiers
+    - wastedassign    # wasted assignments
+    - gosec           # security issues
+    - forcetypeassert # forced type assertions
+    - usetesting      # use testing helpers (replaces tenv)
+    - prealloc        # slice pre-allocation opportunities
+    - gocheckcompilerdirectives # valid go compiler directives
+    - dupword         # duplicate words in source
+    - recvcheck       # receiver type consistency
+
+linters-settings:
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  govet:
+    enable-all: true
+  nakedret:
+    max-func-lines: 0  # disallow naked returns in any function
+  gosec:
+    excludes:
+      - G304  # file path provided as taint input (intentional in getCmd)
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

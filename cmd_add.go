@@ -19,10 +19,7 @@ func addCmd(fname, cmd string) (bool, error) {
 		return false, e
 	}
 
-	overwrite := false
-	if cmd == "set" {
-		overwrite = true
-	}
+	overwrite := cmd == "set"
 
 	return false, lib.Add(fname, bytePassword, lib.Cred{User: user, Pass: pass, Meta: meta}, overwrite)
 }
