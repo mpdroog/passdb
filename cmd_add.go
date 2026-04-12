@@ -9,11 +9,11 @@ func addCmd(fname, cmd string) (bool, error) {
 	if e != nil {
 		return false, e
 	}
-	// TODO: Hide pass from shell?
-	pass, e := lib.GetStdin("pass")
+	passBytes, e := lib.GetPass("pass")
 	if e != nil {
 		return false, e
 	}
+	pass := string(passBytes)
 	meta, e := lib.GetStdin("meta")
 	if e != nil {
 		return false, e

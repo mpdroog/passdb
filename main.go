@@ -95,7 +95,7 @@ func main() {
 	name := args[1]
 
 	var e error
-	bytePassword, e = lib.GetPass()
+	bytePassword, e = lib.GetPass("Master Pass")
 	if e != nil {
 		fmt.Printf("Failed reading pass\n")
 		os.Exit(1)

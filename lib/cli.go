@@ -18,8 +18,8 @@ func GetStdin(question string) (string, error) {
 	return s, e
 }
 
-// getPass asks for a password (same as getStdin except we don't show what user enters in CLI)
-func GetPass() ([]byte, error) {
-	fmt.Print("Master Pass: ")
+// GetPass asks for a password with echo disabled so typed characters are hidden.
+func GetPass(question string) ([]byte, error) {
+	fmt.Print(question + ": ")
 	return term.ReadPassword(int(syscall.Stdin))
 }
