@@ -3,13 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/inancgumus/screen"
 	"github.com/mpdroog/passdb/lib"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type CmdFunc func(string, string) (bool, error)
@@ -121,19 +119,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: only sleep if true by fn?
-	clear, e := fn(name, cmd)
-	if e != nil {
+	if _, e := fn(name, cmd); e != nil {
 		fmt.Printf("ERR %s\n", e.Error())
 		os.Exit(1)
-		return
-	}
-
-	if clear {
-	}
-	if false {
-		//fmt.Printf(">> Sleep 10sec >> clear screen\n")
-		time.Sleep(10 * time.Second)
-		screen.Clear()
 	}
 }
