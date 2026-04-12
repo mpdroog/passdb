@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"github.com/mpdroog/passdb/lib"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/mpdroog/passdb/lib"
 )
 
 func importCmd(fname, arg string) (bool, error) {
@@ -40,6 +42,11 @@ func importCmd(fname, arg string) (bool, error) {
 		}
 
 		key := strings.ReplaceAll(strings.ToLower(toks[1]), " ", "_")
+		key = filepath.Base(filepath.Clean(key))
+		if key == "." || key == "/" || strings.ContainsRune(key, os.PathSeparator) {
+			fmt.Printf("SKIP: invalid key %q\n", toks[1])
+			continue
+		}
 		c := lib.Cred{User: toks[4], Pass: toks[0], Meta: toks[1], URL: toks[3], Type: toks[2]}
 		if Verbose {
 			fmt.Printf("C(key=%s)=%+v\n", key, c)
