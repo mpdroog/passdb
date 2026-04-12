@@ -10,6 +10,9 @@ import (
 )
 
 func findCmd(search, arg string) (bool, error) {
+	if search == "" {
+		return false, fmt.Errorf("search term cannot be empty")
+	}
 	m := false
 
 	for name, _ := range lib.Lookup {
