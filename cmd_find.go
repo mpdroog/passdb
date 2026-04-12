@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/mpdroog/passdb/lib"
+	"os"
 	"strings"
+
+	qrterminal "github.com/mdp/qrterminal/v3"
+	"github.com/mpdroog/passdb/lib"
 )
 
 func findCmd(search, arg string) (bool, error) {
@@ -34,7 +37,11 @@ func findCmd(search, arg string) (bool, error) {
 			m = true
 
 			fmt.Printf("user: %s\n", cred.User)
-			fmt.Printf("pass: %s\n", cred.Pass)
+			if QR {
+				qrterminal.Generate(cred.Pass, qrterminal.L, os.Stdout)
+			} else {
+				fmt.Printf("pass: %s\n", cred.Pass)
+			}
 			fmt.Printf("meta: %s\n", cred.Meta)
 			fmt.Printf("url: %s\n", cred.URL)
 			if id+1 != len(creds.Creds) {

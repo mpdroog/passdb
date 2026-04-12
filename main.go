@@ -15,6 +15,7 @@ type CmdFunc func(string, string) (bool, error)
 var (
 	Help         bool
 	Verbose      bool
+	QR           bool
 	letters      = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()")
 	bytePassword []byte
 	validCmds    = map[string]CmdFunc{
@@ -56,10 +57,25 @@ func main() {
 	flag.StringVar(&lib.DBPath, "d", "./creds.d", "Credentials-dir")
 	flag.BoolVar(&Verbose, "v", false, "Verbose-mode (log more)")
 	flag.BoolVar(&Help, "h", false, "Show this screen")
+	flag.BoolVar(&QR, "qr", false, "Print password as QR code")
 
 	flag.Usage = showHelp
 	flag.Parse()
-	args := flag.Args()
+
+	// flag.Parse stops at the first non-flag argument, so flags placed after
+	// positional args (e.g. "passdb find github -qr") are left in flag.Args().
+	// Filter them out manually.
+	var args []string
+	for _, a := range flag.Args() {
+		switch a {
+		case "-qr", "--qr":
+			QR = true
+		case "-v", "--v":
+			Verbose = true
+		default:
+			args = append(args, a)
+		}
+	}
 
 	if Verbose {
 		fmt.Printf("args=%+v\n", args)
