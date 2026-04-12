@@ -2,10 +2,17 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/mpdroog/passdb/lib"
 )
 
 func getCmd(fname, arg string) (bool, error) {
+	// Clean resolves any ".." components to prevent path traversal.
+	// fname is intentionally a full path (not a DB key) so callers can
+	// read files outside DBPath directly.
+	fname = filepath.Clean(fname)
+
 	if Verbose {
 		fmt.Printf("Read=%s\n", fname)
 	}

@@ -2,14 +2,13 @@ package lib
 
 import (
 	"bufio"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/mpdroog/passdb/stream"
 	"golang.org/x/crypto/scrypt"
-	"math/rand"
 	"os"
-	"time"
 )
 
 // File is the base struct for every file
@@ -26,16 +25,15 @@ type Cred struct {
 	URL  string
 }
 
-// init ensures we seed the randomizer on start
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-// randSeq creates a byte array of N-items
+// RandSeq creates a byte array of N-items drawn from the letters alphabet
+// using a cryptographically secure random source.
 func RandSeq(n int) []byte {
 	b := make([]byte, n)
+	if _, e := rand.Read(b); e != nil {
+		panic(e)
+	}
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = letters[int(b[i])%len(letters)]
 	}
 	return b
 }
