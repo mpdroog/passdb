@@ -41,6 +41,10 @@ func importCmd(fname, arg string) (bool, error) {
 			fmt.Printf("%+v\n", toks)
 		}
 
+		if len(toks) < 5 {
+			fmt.Printf("SKIP: row has %d columns, need 5: %+v\n", len(toks), toks)
+			continue
+		}
 		key := strings.ReplaceAll(strings.ToLower(toks[1]), " ", "_")
 		key = filepath.Base(filepath.Clean(key))
 		if key == "." || key == "/" || strings.ContainsRune(key, os.PathSeparator) {
